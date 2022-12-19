@@ -1,0 +1,17 @@
+Description:
+
+	
+This simulation builds ball-and-stick neurons with several dendritic length (200 to 1,000 µm dendrites) with active sodium and potassium channels in the soma, AIS, and axon. It then delivers stochastic patterns of synaptic input iteratively to determine the threshold number of synapses necessary to initiate an action potential in the AIS for each dendritic location (typically at 10 µm intervals) and each of seven RMPs (-55 to -85 mV), for inputs having AMPA-only inputs, NMDA-only inputs, or synapses with both AMPA and NMDA conductance. 
+
+1. Compile the .mod files for synaptic conductances and voltage-gated sodium and potassium channels.
+
+2. Run either the "init_BallStick.hoc", "init_BallStick_NoSpines.hoc", or "init_BallStick_Active.hoc" files. They are similar, but the second file generates neurons without dendritic spines (synaptic inputs placed at 1 µm intervals on the dendritic shaft), while the third file generates neurons with active conductances in the dendrite. 
+
+3. All "init" files will first run a "makeSavestates" file that will run the model for 1 second to allow active conductances to reach steady-state (these files begin with "BLen..." and include the dendritic length (e.g., "BLen1000..." for a 1,000 µm dendrite) and RMP ("...stdstt70.dat" for a -70 mV RMP). 
+
+4. Then synaptic thresholds will be found for all dendritic locations and RMPs for ball-and-stick neurons of varying length (200 to 1,000 um). 
+
+5. Output files begin with "Tr0ThLen..." followed by the dendritic length, the membrane potential ("Vxxx") and synaptic conductance type ("A" = AMPA-only, "N"= NMDA-only, and "B" = both AMPA and NMDA). Thus, output file "Tr0ThLen400V75A.dat" will include data for 10 patterns of AMPA-only input in a 400-µm dendrite at -75 mV. Each file returns synaptic thresholds for each of 10 patterns of input (columns) for every 50-µm span of dendritic tree (rows) iterated at 10-µm intervals. 
+
+6. The script at the end of the file can be modified to limit the lengths of dendrites or the RMPs tested. 
+

@@ -1,0 +1,130 @@
+/* 
+Uses the makeCell*.hoc files in parallel. Also the new ball and stick template.
+
+This version of runParallel is for the new synapse trials (NMDA only), 12.21.17
+*/
+
+/************* Loading necessary files *********************/
+
+xopen("makeSv.hoc")
+load_file("RealThresh_Soma.hoc")
+// Uses 50 um range for threshold test, and 50 ms width Gaussian.
+// Assumes savestates are already made and in the folder. Use 'makeSavestates.hoc' for each machine
+
+/************* The procs ****************/
+
+strdef mcVS,ThName,fName,filename,togStr
+objref savestate
+proc mcVolt() { local voltInput,startS,thType,toggle,brInd localobj cell
+	// Inputs:
+	// $1 is v_init
+	// $2 is starting seed
+	// $3 is the threshold trial type (0 for somatic, 1 for dendritic)
+	// $4 is the toggle (0 Both/1 AMPA/2 NMDA)
+	// $5 is the branch index (1-10)
+
+	voltInput = $1
+	startS = $2
+	thType = $3
+	toggle = $4
+	brInd = $5
+
+	// Makes cell with desired voltage and length
+	cell = new Cell(voltInput)
+	v_init = voltInput
+
+	savestate = new SaveState()
+	savestate = loadSv(voltInput*-1)
+		// Loads the savestate to a variable 'savestate'
+
+	// Running the test
+	runTh(cell,startS,brInd,thType,toggle)
+}
+
+proc runTh() { local nSpines,startS,brInd,sVT
+	// $o1 is the cell
+	// $2 is the starting seed for the trials
+	// $3 is the branch index for the DGC (1-17)
+	// $4 is 0 for somatic threshold, 1 for dendritic 
+	// $5 is the usual 0 Both/1 AMPA/2 NMDA toggle
+
+	startS = $2
+	brInd = $3
+	thToggle = $4
+	toggle = $5
+
+	if (toggle==0) togStr = "B"
+	if (toggle==1) togStr = "A"
+	if (toggle==2) togStr = "N"
+
+	if (!thToggle) {
+	// Somatic threshold
+		init()
+		sVT = $o1.soma.v(.5) + 5 // the soma voltage threshold
+		sprint(ThName,"V%d_CA3%dBr%d_%sSoma.dat",v_init*-1,startS,brInd,togStr)
+		ThreshSpaceS(50,50,brInd,10,toggle,ThName,"CA3Branches2.dat",startS*startS+2,sVT,$o1)	
+			// Using CA3Branches2 because those are longer than Branches1
+
+			// Inputs:
+			// $1: locRange is the range to be uniformly sampled in space
+			// $2: gaussTime is the width of the Gaussian to be sampled for timing
+			// $3: branchNum is the column to be read in the spine index file.
+			// $4: incrBy is the distance in microns each trial is separated by.
+			// $5: toggle is the kind of synapse: 0 BOTH, 1 AMPA, 2 NMDA
+			// $s6: filename.
+			// $s7: name of the spine map file.
+			// $8: seed
+			// $9: soma threshold voltage
+			// $o10: the cell
+	} else {
+	// Dendritic threshold
+		init()
+		sprint(ThName,"V%d_CA3%dBr%d_%sDend.dat",v_init*-1,startS,brInd,togStr)
+		ThreshSpaceD(50,50,brInd,20,toggle,ThName,"CA3Branches2.dat",startS*startS+2,$o1)
+			// Inputs:
+			// $1: locRange is the range to be uniformly sampled in space
+			// $2: gaussTime is the width of the Gaussian to be sampled for timing
+			// $3: branchNum is the column to be read in the spine index file.
+			// $4: incrBy is the distance in microns each trial is separated by.
+			// $5: toggle is the kind of synapse: 0 BOTH, 1 AMPA, 2 NMDA
+			// $s6: filename.
+			// $s7: name of the spine map file.
+			// $8: the seed
+			// $o9: the cell
+	}
+}
+
+proc init() { 
+	// The right savestate must be loaded
+
+  	finitialize(v_init)
+    savestate.restore(1)
+    t=0
+    fcurrent()
+    frecord_init()
+}
+
+obfunc loadSv() { localobj f,svstate
+	// Loads the right savestate
+	// $1 is the voltage*-1
+
+	sprint(filename,"CA3stdstt%d.dat",$1)
+	svstate = new SaveState()
+	f = new File(filename)
+	svstate.fread(f)
+	return svstate
+}
+
+/************************************************************/
+/**************** The actual script *************************/
+/************************************************************/
+
+	for vo_ind = 1,7 {	// Sets RMP from -55 (1) to -85 (7) mV
+		for br_ind = 1,10 {	// sets the dendritic branch to test
+			for tr_ind = 0,9 {	// Sets the number of stochastic patterns, typically 10
+				for tog_ind = 0,2 {	// 0 = BOTH AMPA & NMDA, 1 = AMPA, 2 = NMDA
+					mcVolt(((vo_ind*5)+50)*-1,tr_ind,0,tog_ind,br_ind)
+					}
+			}
+		}
+	}

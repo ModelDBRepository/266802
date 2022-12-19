@@ -1,0 +1,21 @@
+Description:
+
+	
+This simulation is identical to that for Figure 2, but incorporates modified conductances:
+
+"0_syn_g.mod" = the normal AMPA conductance (g_max modified to 400 or 250 pS in the "init_BallStick.hoc" file). Point process name is syn_g.
+
+"0_nmda.mod" = the normal NMDA conductance (1 nS max conductance). Point process name is "nmda".
+
+"0_FastNMDA1dot25nS.mod" and "0_FastNMDA3dot15nS.mod" = fast NMDA conductance (point process name for each is "nmda"). These are the NMDA conductance with AMPA-like kinetics, titrated to 1.25 nS and 3.15 nS to add to AMPA conductances of 400 and 250 pS, respectively.
+
+"0_SlowAMPA22.mod" and "0_SlowAMPA45.mod" = slow AMPA conductance (point process name for each is "nmda"). Each is an AMPA conductance with slow, NMDA-like kinetics, but with max conductances set to 22 or 45 pS, respectively, for adding to 400 pS AMPA or 250 pS AMPA, respectively.
+
+"0_nmda345pS.mod" and "0_nmda735pS.mod" = NMDA conductances ("nmda") with g_max set to 345 pS or 735 pS, which are titrated to pair with the 400 pS and 250 pS AMPA conductance, respectively. 
+
+1. For each run type, compile only the relevant mod files ("syn_g.mod" plus one of the other modified conductances) together with the "0_na.mod" and "0_kv.mod" files. 
+
+2. Open "init_BallStick.hoc" and modify 5th line ("AMPA = 2.5" or "AMPA = 4") such that the AMPA (syn_g) conductance is set to 250 or 400 pS, as appropriate for the modified conductances being used. 
+
+3. Run "init_BallStick.hoc". Data output will use the same name convention as in simulations for Figure 2, generating the threshold number of synapses for each dendritic location over ten patterns of stochastic input. Only "B.dat" files (pairing the AMPA conductance with one of the modified conductances) will be generated. 
+

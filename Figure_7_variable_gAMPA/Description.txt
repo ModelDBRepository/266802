@@ -1,0 +1,18 @@
+Description:
+
+	
+This simulation builds ball-and-stick neurons of variable length (200 to 1,000 µm dendrites) with active sodium and potassium channels in the soma, AIS, and axon. It then delivers stochastic patterns of synaptic input iteratively to determine the threshold number of synapses necessary to initiate an action potential in the AIS for each dendritic location (typically at 10 µm intervals) and each of seven RMPs (-55 to -85 mV), for inputs having maximum AMPA conductance ranging from 100 to 1000 pS. Output files include runs for AMPA-only ("...A.dat" files) or both AMPA and NMDA (1 nS) conductance ("...B.dat" files) according to the following naming convention:
+
+Example file name: A9Tr0ThLen600V65A.dat
+
+This file is for a ball and stick neuron with a 600 um dendrite ("...ThLen600...") with RMP set to -65mV ("...V65_...") for AMPA-only inputs ("...A.dat") having an AMPA conductance of 900 pS ("A9..."). 
+
+1. Compile mod files for synaptic conductances and voltage-gated sodium and potassium channels. 
+
+2. Run the "init_BallStick.hoc" file.
+
+3. The "makeSavestates" file will run first to build steady-state files for each of the neuron morphologies / RMPs, then it will begin to find synaptic thresholds for all dendritic locations and RMPs for ball-and-stick neurons of varying length (200 to 1,000 um). 
+
+6. To test the 1.5 nS AMPA conductance, just modify the "init_BallStick.hoc" file so that ac_ind is locked to 15 (e.g., " for ac_ind = 15,15 { ").
+ 
+

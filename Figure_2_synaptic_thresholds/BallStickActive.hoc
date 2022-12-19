@@ -1,0 +1,151 @@
+// The ball and stick model as a template with inputs length and v_init.
+
+begintemplate Cell
+public init, biophys
+
+public soma, iseg, axon, dend, spine_head, spine_neck
+
+proc init() {
+	// $1 is branch length in microns
+	// $2 is v_init
+	bLength = $1
+	voltInput = $2
+	biophys(bLength,voltInput)
+}
+
+create iseg[40]
+create axon
+create soma
+create dend[1]
+create spine_head[1]
+create spine_neck[1]
+
+proc biophys() {
+	length = $1 		// length of dendrite in microns
+	v_init = $2 		// resting membrane potential
+
+	celsius=37			// nominal temperature of simulation
+	Ri=100    			// internal resistivity in ohm-cm
+	Cm=1.0	      			// specific membrane capacitance in uF/cm^2
+	Rm=15000      			// specific membrane resistivity in ohm/cm^2
+	na_dend=30			// default Na channel density in pS/um^2
+	kv_dend=30			// default K channel density in pS/um^2
+	na_soma=100			// somatic Na channel density in pS/um^2
+	kv_soma=100			// somatic k channel density in pS/um^2
+
+	access soma
+	distance()
+
+	create dend[length]
+	create spine_head[length]
+	create spine_neck[length]
+
+	soma {
+		nseg = 3
+		diam = 10
+		L = 20
+		insert na 
+		gbar_na=na_soma
+		insert kv
+		gbar_kv=kv_soma
+		connect iseg[0](0), 0
+	}
+
+for i = 0, 39 {
+		iseg[i] {
+			nseg = 1
+			diam = 2 - (1.5*(i/40))
+			L = 1
+			insert na
+			insert kv
+			if (i<5) {
+				gbar_na=na_soma
+				gbar_kv=kv_soma
+			} else {
+				gbar_na = 8000
+				gbar_kv = 2000
+			}
+
+			nao=105
+			ek=-96
+
+			if (i<39) connect iseg[i+1](0), 1
+			if (i==39) connect axon(0),1
+		}
+	}
+
+	axon {
+		nseg = 201
+		L = 2000
+		diam = .5
+		insert na
+		gbar_na = 300
+		insert kv
+		gbar_kv = 60
+	}
+
+
+	for i = 0, length-1 {
+		access soma
+		distance()
+
+		access dend[i] 
+			nseg = 1
+			L = 1
+			diam = 5 - ((4*i)/(length-1))
+			if (i == 0) {
+			connect soma(1), 0
+			} else {
+			connect dend[i-1](1), 0
+			}
+			insert na
+			insert kv
+
+			gbar_na=na_soma - (na_soma*(distance(.5)/(length+50)))
+			gbar_kv=kv_soma - (kv_soma*(distance(.5)/(length+50)))
+					nao = 150
+					ek = -96
+
+
+			//Adding spines for every micron
+			dend[i] connect spine_neck[i](0),.5
+			spine_neck[i] connect spine_head[i](0),1
+			spine_neck[i] {nseg=1 L=1 diam=0.0504573} 
+			spine_head[i] {nseg=1 L=0.5 diam=0.5}
+
+			access soma
+			distance()
+			access spine_neck[i]
+				insert na
+				insert kv 
+
+				gbar_na=na_soma - (na_soma*(distance(.5)/(length+50)))
+				gbar_kv=kv_soma - (kv_soma*(distance(.5)/(length+50)))
+					nao = 150
+					ek = -96
+
+
+			access spine_head[i]
+				insert na
+				insert kv 
+
+				gbar_na=na_soma - (na_soma*(distance(.5)/(length+50)))
+				gbar_kv=kv_soma - (kv_soma*(distance(.5)/(length+50)))
+					nao = 150
+					ek = -96
+	}
+
+	forall {
+		insert pas
+		g_pas = 1/Rm
+		cm = Cm
+		Ra = Ri
+		e_pas = v_init
+		nao = 150
+		ek = -96
+	}
+
+	access axon
+}
+
+endtemplate Cell

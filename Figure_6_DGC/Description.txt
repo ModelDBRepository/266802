@@ -1,0 +1,20 @@
+Description:
+
+	
+This simulation is similar to that for Figure 2, but for branches on a dentate granule cell (DGC), with an arbitrary voltage threshold of 5 mV above somatic RMP.
+
+The DGC morphology is adapted from Schmidt-Hieber C, Jonas P, Bischofberger J (2007) Subthreshold Dendritic Signal Processing and Coincidence Detection in Dentate Gyrus Granule Cells. J Neurosci 27:8430-8441.
+
+
+1. Compile the mod files (0_syn_g.mod, 0_nmda.mod, 0_na.mod, 0_kv.mod). 
+
+
+2. Run "init_DGC.hoc".
+
+3. Data output will, for each dendritic branch (1-17) and each dendritic location and RMP, list the threshold number of synapses to drive the soma 5 mV above RMP. Each column is for a different stochastic pattern of synaptic input, each row is for ever-more-distal dendritic location (at 10 µm intervals). Name convention is as follows:
+
+Example file name: V55_DGC1Br12_ASoma.dat
+
+This file is for a dentate granule cell (DGC) with RMP set to -55mV ("V55_...") for synaptic input pattern 1 ("...DGC1...") to branch number 12 ("...Br12_...") for AMPA-only synapses ("..._ASoma.dat"). Branches range from 1 to 17 (e.g., "...Br1_..." to "...Br17_...") and includes NMDA-only ("...NSoma.dat") and AMPA+NMDA ("...BSoma.dat") trials (in addition to AMPA-only trials). Thus, each output file will have a single column of synaptic thresholds for one branch/RMP/pattern/conductance combination, with each row being a 10 um increment along the dendritic path.
+
+Note: This simulation runs very slowly, and it may be useful to modify the code in "init_DGC.hoc" to limit simulations to a subset of RMPs, branch numbers, synaptic patterns, or conductance types. 

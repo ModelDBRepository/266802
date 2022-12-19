@@ -1,0 +1,14 @@
+Description:
+	
+This simulation builds ball-and-stick neuron with a 200-µm dendrite that receives synatpic input, and three additional dendrites that are each 600 µm long. Simulations are identical to those for ball-and-stick neurons in delivering stochastic patterns of synaptic input iteratively to the 200-µm dendrite to determine the threshold number of synapses necessary to initiate an action potential in the AIS for each dendritic location (10 µm intervals) and each of seven RMPs (-55 to -85 mV), for inputs having AMPA-only inputs, NMDA-only inputs, or synapses with both AMPA and NMDA conductance. 
+
+1. Compile .mod files for synaptic conductances and voltage-gated sodium and potassium channels. 
+
+2. Run "init_BigNeuron_3Dend.hoc". 
+
+4. The simulation will first generate steady-state files for the different RMPs, and then will begin to find synaptic thresholds for all dendritic locations and RMPs along the 200-µm dendrite. 
+
+5. Output files begin with "Tr0ThLen..." followed by the dendritic length (here, always "200", the membrane potential ("Vxx") and synaptic conductance type ("A" = AMPA-only, "N"= NMDA-only, and "B" = both AMPA and NMDA). Thus, output file "Tr0ThLen200V75A.dat" will include data for 10 patterns of AMPA-only input in the 200-µm dendrite at -75 mV. Each file returns synaptic thresholds for each of 10 patterns of input (columns) for every 50-µm span of dendritic tree (rows) iterated at 10-µm intervals. 
+
+6. The file can be modified to add or subtract additional dendrites to test effect of neuron size on the fidelity of EPSP-spike coupling (e.g., as in Figure 3A).
+

@@ -1,0 +1,79 @@
+/*
+4.12
+makeSv.hoc is designed to work for the CA3 cell
+
+*/
+
+load_file("CA3morph.hoc")
+
+strdef fName
+objref savestate
+proc mcVolt() { local voltInput localobj cell
+	// Inputs:
+	// $1 is v_init
+
+	voltInput = $1
+
+	// Makes cell with desired voltage 
+	cell = new Cell(voltInput)
+	v_init = voltInput
+
+	makeSv()
+		// makeSv() makes the savestate for the cell type; the file is labelled with Vm
+}
+
+proc makeSv() { localobj f,sv
+	// Makes a savestate with labels for voltage.
+	// Does not set v_init: that must be declared before calling makeSv()
+
+	tstop = 1000
+	init1()
+		// init1 used because no savestate has been made yet
+	
+	while (t<tstop) {
+		fadvance()
+	}
+
+	sprint(fName,"CA3stdstt%d.dat",v_init*-1)
+	f = new File(fName)
+	sv = new SaveState()
+	sv.save()
+	sv.fwrite(f)
+	f.close()
+}
+
+proc init1() {
+	// An init proc if no savestate has been made yet.
+	// Needs v_init to be declared prior to calling.
+
+	finitialize(v_init)
+	t=0
+	fcurrent()
+	frecord_init()
+}
+
+/************************************************************/
+/**************** The actual script *************************/
+/************************************************************/
+
+objref pc
+
+pc = new ParallelContext()
+pc.runworker()
+
+if (pc.nhost==1) {
+	for vo_ind = 1,7 {
+		mcVolt(((vo_ind*5)+50)*-1)
+	}
+}else{
+	for vo_ind = 1,7 {
+		pc.submit("mcVolt",((vo_ind*5)+50)*-1)
+		// Inputs:
+		// $1 is v_init
+	}
+	while (pc.working) {
+		s = pc.retval
+	}
+}
+
+pc.done()

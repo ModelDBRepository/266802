@@ -1,0 +1,363 @@
+// Threshold spacetests using a binary search method. For real cells, detecting
+// a somatic depolarization of an input value (usually +5 mV from resting)
+//
+// Program flow:
+// 	Takes location range, Gaussian width for time distribution, and location increments.
+//	Also takes type of run: AMPA only, NMDA only, or both.
+// 	Records number of synapses at which the threshold is reached.
+
+strdef filename, brStr, ibrStr
+
+proc ThreshSpaceS() { local sVT,UPPERLIM,resetHere,locRange,gaussTime,branchNum,incrBy,found,branchLength,toggle,matInd,jvar localobj spMap,search_ind,finMat,floovec
+// Runs the whole test.
+	// Inputs:
+	// $1: locRange is the range to be uniformly sampled in space
+	// $2: gaussTime is the width of the Gaussian to be sampled for timing
+	// $3: branchNum is the column to be read in the spine index file.
+	// $4: incrBy is the distance in microns each trial is separated by.
+	// $5: toggle is the kind of synapse: 0 BOTH, 1 AMPA, 2 NMDA
+	// $s6: filename.
+	// $s7: name of the spine map file.
+	// $8: seed
+	// $9: soma threshold voltage
+	// $o10: the cell
+
+	UPPERLIM = 10000 // If the number of synapses goes above this, the trial moves on.
+
+	locRange = $1
+	gaussTime = $2
+	branchNum = $3
+	incrBy = $4
+	toggle = $5
+	filename = $s6
+	ibrStr = $s7
+	seed = $8
+	sVT = $9
+
+
+	spMap = new Vector()
+	spMap = makeMap(ibrStr,branchNum)
+
+	// The binary search vector holding indices. Order: lower bound, current test number, upper bound.	
+	search_ind = resetVec(10)
+
+	floovec = new Vector(1,(spMap.size()-locRange)/incrBy)
+	floovec.floor()
+	finMat = new Matrix(floovec.x[0]+1,1)
+
+	matInd = -1
+
+	for (l_ind=0;l_ind<(spMap.size()-locRange);l_ind=l_ind+incrBy) {
+		// For each run, search_ind starts from the previous threshold level
+		found = 0
+		matInd = matInd+1
+
+		if (search_ind.x[1] == -1) {
+			resetHere = UPPERLIM-1
+		} else {
+			resetHere = search_ind.x[1]
+		}
+
+		search_ind = resetVec(resetHere)
+
+		while (found != 1) {
+			// found variable is 1 when AP is fired at synnum n+1 but not at synnum n
+			found = testSyns(search_ind.x[1],locRange,gaussTime,toggle,seed,l_ind,spMap,sVT,$o10)				
+			// Sees if this synapse number works
+				// Inputs:
+				// $1: search_ind is how many synapses to use
+				// $2: locRange is the testing range
+				// $3: gaussTime is the width of the Gaussian for the time distribution
+				// $4: toggle is the usual synapse type ID
+				// $5: seed is for the norm dist for time and the unif dist for space.
+				// $6: l_ind is where the test is starting.
+				// $o7: spMap is the vector containing spine indices.
+				// $8: soma threshold voltage
+				// $o9: the cell
+			//print search_ind.x[1]
+
+			// Setting an upper limit for # synapses tested
+			if (search_ind.x[1] > UPPERLIM) {
+				found = 1
+				search_ind.x[1] = -1
+			}
+
+			search_ind = binSearch(search_ind,found)
+				// If synapse number doesn't work, changes the search index and upper limit
+
+		}
+
+		finMat.x[matInd][0] = search_ind.x[1] + 1
+			// Saves final synapse number to the matrix
+		jvar = printf("Loc %d: %d\n",l_ind,search_ind.x[1])
+	}
+
+	saveSpace(finMat,filename)
+}
+
+/*------------------ MAIN FUNCTIONS ----------------------*/
+
+obfunc makeMap() { local mapInd,nxSp,tsdInd,jnkInd localobj f,brVec
+	// Reads in the nx1000 branch spine index file and puts the right column in a vector.
+	//
+	// Inputs:
+	// $s1: the spine index file name.
+	// $2: the column I want to read.
+	//
+	// Output:
+	// spMap, a vector that's as long as the branch length.
+
+	brVec = new Vector(1000)
+	sprint(brStr,"%s",$s1)
+	f = new File(brStr)
+	f.ropen()
+
+	// Gets rid of the unnecessary branches
+	if ($2>1) {
+		for jnkInd = 2,$2 {
+			for tsdInd = 0,999 brVec.x[0] = f.scanvar()
+		}
+	}
+
+	// Reads in spine indices until a -1 is reached.
+	nxSp = f.scanvar()
+	mapInd = 0
+	while (nxSp!=-1) {
+		brVec.x[mapInd] = nxSp
+		mapInd = mapInd+1
+		nxSp = f.scanvar()
+	}
+
+	// Shortens the vector to the right length.
+	for cutInd = mapInd,999 brVec.remove(mapInd)
+
+	return brVec
+}
+
+func testSyns() { local sVT,search_ind, locRange, gaussTime, toggle, seed, l_ind, found localobj tempvec,spMap,r2, tlist, tlist2, apc
+	// If an AP fires at search_ind and search_ind+1, returns 2.
+	// If no AP fires at either, returns 0.
+	// If AP fired at search_ind+1 and not search_ind (it's at threshold), returns 1.
+	//
+	// Inputs:
+	// $1: search_ind is how many synapses to use
+	// $2: locRange is the testing range
+	// $3: gaussTime is the width of the Gaussian for the time distribution
+	// $4: toggle is the usual synapse type ID
+	// $5: seed is for the norm dist for time and the unif dist for space.
+	// $6: l_ind is where the test is starting.
+	// $o7: spMap is the vector containing spine indices.
+	// $8: soma threshold voltage
+	// $o9: the cell
+
+	search_ind = $1
+	locRange = $2
+	gaussTime = $3
+	toggle = $4
+	seed = $5
+	l_ind = $6
+	spMap = $o7
+	sVT = $8
+
+	r2 = new Vector(2,0)
+
+	tempvec = new Vector(1)
+	tempvec.x[0] = locRange/2
+	tempvec.floor()
+
+	// Runs for search_ind and search_ind+1
+	for ts_ind = 0,1 {
+
+		tlist = new List()
+		tlist2 = new List() 
+
+		tlist = setSyns(search_ind+ts_ind,locRange,gaussTime,toggle,seed,l_ind,spMap,$o9)
+			// Inputs:
+			// $1: synapse number.
+			// $2: locRange, how widely synapses are distributed.
+			// $3: gaussTime, the width of the Gaussian used in sampling onset times.
+			// $4: toggle is explained above; slightly different for this function since it does one at a time.
+			// $5: seed
+			// $6: l_ind is the spine this test is starting on.
+			// $o7: spMap
+			// $o8: the cell
+		if (toggle==0) { 
+			tlist2 = setSyns(search_ind+ts_ind,locRange,gaussTime,2,seed,l_ind,spMap,$o9) 
+		}
+
+		init()
+
+		// Puts an APCount object at the spine in the middle of the input.
+		$o9.soma {
+			apc = new APCount(0.5)
+			apc.thresh = sVT
+			apc.n = 0
+		}
+
+		//Takes tlist to adjust tstop.
+		runTest(tlist) 
+		//if (apc.n>0) printf("time was %d\n",apc.time)
+
+		// Sees if an 'AP' fired
+		if (apc.n > 0) {
+			if (ts_ind==0) {
+				return 2
+			} else {
+			r2.x[ts_ind] = 1
+			}
+		}
+	}
+
+	return r2.sum()
+}
+
+obfunc binSearch() { 
+	// Adjusts the searchVec based on results from testSyns.
+	// 
+	// Inputs:
+	// $o1: search_ind is a vector; the first element is the number of synapses being tested 
+	// $2: found tells what to do with the search vector. 0 is none, 1 is threshold, 2 is both.
+
+	// If too low
+	if ($2 == 0) {
+		$o1.x[0] = $o1.x[1]
+		if ($o1.x[2] == $o1.x[1]) {
+			$o1.x[1] = $o1.x[1]*2
+			$o1.x[2] = $o1.x[1]
+		} else {
+			$o1.x[1] = (($o1.x[2]-$o1.x[1])/2)+$o1.x[1]
+			$o1.floor()
+		}
+
+	}
+
+	// If too high
+	if ($2 == 2) {
+		$o1.x[2] = $o1.x[1]
+		$o1.x[1] = (($o1.x[1]-$o1.x[0])/2)+$o1.x[0]
+		$o1.floor()
+	}
+
+	return $o1
+}
+
+proc saveSpace() { localobj mat, f 
+	// Takes a matrix and saves it.
+	//
+	// Inputs: 
+	// $o1: the matrix to be saved (rows are location, columns are trial)
+	// $s2: filename with the full directory
+
+	mat = $o1
+	f = new File()
+	f.wopen($s2)
+	mat.fprint(f, " %g")
+	f.close()
+}
+
+obfunc resetVec() { localobj vec
+	// Gives the index vector given some general starting point. It's a 3-element vector where the 
+	// first element is the lower bound, middle is current index, last is upper bound. The function
+	// starts the upper bound at the current index value, since the search pattern works by doubling.
+	//
+	// Input:
+	// $1: the number of synapses to start out with.
+
+	vec = new Vector(3,0)
+	vec.x[1] = $1
+	vec.x[2] = $1
+
+	return vec
+}
+
+/*------------------ SUB FUNCTIONS -----------------------*/
+
+// In testSyns() 
+obfunc setSyns() { local s_ind localobj tlist,r,normr,svec,tvec
+	// Creates a list of placed and timed synapses. Does not deal with BOTH case (creates AMPA for 
+	// 0 and 1 toggle and NMDA for 2) because that's taken care of in testSyns().
+	//
+	// Inputs:
+	// $1: synapse number.
+	// $2: locRange, how widely synapses are distributed.
+	// $3: gaussTime, the width of the Gaussian used in sampling onset times.
+	// $4: toggle is explained above; slightly different for this function since it does one at a time.
+	// $5: seed
+	// $6: l_ind is the spine this test is starting on.
+	// $o7: spMap
+	// $o8: the cell
+	// Output:
+	// A single list of one kind of synapse; preset locations and firing times.
+
+	tlist = makeSyns($4,$1)
+
+	r = new Random($5)
+	r.uniform($6,$6+$2)
+	normr = new Random($5*10)
+	normr.normal(0,$3) 
+
+	svec = new Vector($1)
+	tvec = new Vector($1)
+
+	svec.setrand(r)
+	svec.floor()
+	tvec.setrand(normr)
+	tvec.add((-1)*tvec.min()+2)
+
+	for s_ind = 0, $1-1 {
+		$o8.spine_head[$o7.x[svec.x[s_ind]]] {
+			tlist.o(s_ind).loc(.5)
+			tlist.o(s_ind).onset() = tvec.x[s_ind]
+		}
+	}
+
+	return tlist
+}
+
+// In testSyns()
+proc runTest() { local i localobj vec
+	// Initializes cell and runs to tstop, which is 100 + last firing time.
+	// Input:
+	// $o1: tlist.
+
+	vec = giveTimes($o1)
+
+	init()
+	tstop = vec.max() + 100
+
+	while (t<tstop) {
+		fadvance()
+	}
+}
+
+// In setSyns() 
+obfunc makeSyns() { local i localobj tlist
+	// Takes kind of synapses and number and creates a list of them. 0 and 1 make AMPA, 2 makes NMDA.
+	//
+	// Inputs:
+	// $1: toggle
+	// $2: number of synapses.
+	// Output:
+	// tlist 
+
+	tlist = new List()
+	if ($1!=2) {
+		for i=0, ($2-1) tlist.append(new syn_g())
+	} else {
+		for i=0, ($2-1) tlist.append(new nmda())
+	}
+	return tlist
+}
+
+// In runTest() and setSyns()
+obfunc giveTimes() { local i localobj vec
+	// Takes synapse list and makes a vector of all onset times.
+	// Input:
+	// $o1 is the synapse list.
+
+	vec = new Vector()
+	for i = 0,$o1.count()-1 {
+		vec.append($o1.o(i).onset())
+	}
+	return vec
+}

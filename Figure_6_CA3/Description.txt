@@ -1,0 +1,20 @@
+Description:
+
+	
+This simulation is similar to that for Figure 2, but for apical branches on a CA3 pyramidal neuron, with an arbitrary voltage threshold of 3 mV above somatic RMP.
+
+The CA3 morphology is adapted from Hemond P, Migliore M, Ascoli GA, Jaffe DB (2009); The membrane response of hippocampal CA3b pyramidal neurons near rest: heterogeneity of passive properties and the contribution of hyperpolarization-activated currents. Neuroscience 160(2):359-370.
+
+
+1. Compile the mod files (0_syn_g.mod, 0_nmda.mod, 0_na.mod, 0_kv.mod). 
+
+
+2. Run "init_CA3.hoc".
+
+3. Data output will, for each dendritic branch (1-10) and each dendritic location and RMP, list the threshold number of synapses to drive the soma 3 mV above RMP. Each column is for a different stochastic pattern of synaptic input, each row is for ever-more-distal dendritic location (at 10 µm intervals). Name convention is as follows:
+
+Example file name: V65_CA30Br1_NSoma.dat
+
+This file is for a CA3 neuron with RMP set to -65mV ("V65_...") for input pattern 0 ("...CA30...") to branch number 1 ("...Br1_...") for NMDA-only synapses ("..._NSoma.dat"). Branches range from 1 to 10 (e.g., "...Br1_..." to "...Br10_...") and includes AMPA-only ("...ASoma.dat") and AMPA+NMDA ("...BSoma.dat") trials (in addition to NMDA-only trials). Thus, each output file will have a single column of synaptic thresholds for one branch/RMP/pattern/conductance combination, with each row being a 10 um increment along the dendritic path.   
+
+Note: This simulation runs very slowly, and it may be useful to modify the code in "init_CA3.hoc" to limit simulations to a subset of RMPs, branch numbers, synaptic patterns, or conductance types. 
